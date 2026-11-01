@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+# Подключается в server{} контейнера web через include nginx-custom/*.conf
+location ^~ /file-service/ {
+    # Имя резолвится при запросе: web стартует, даже если сервис ещё не поднят
+    set $file_sharing_upstream http://file-sharing.meet.jitsi:3000;
+    rewrite ^/file-service(/.*)$ $1 break;
+    proxy_pass $file_sharing_upstream;
+
+    client_max_body_size {{ jitsi_file_sharing_max_file_size_mb + 1 }}m;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+    proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
+}

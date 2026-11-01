@@ -1,0 +1,51 @@
+---
+# Отключение: убираем настройки из Jitsi, останавливаем сервис и удаляем его
+# каталог вместе с загруженными файлами.
+- name: Check file sharing compose file
+  ansible.builtin.stat:
+    path: "{{ jitsi_file_sharing_base_dir }}/compose.yml"
+  register: jitsi_file_sharing_compose
+
+- name: Stop file sharing service
+  community.docker.docker_compose_v2:
+    project_src: "{{ jitsi_file_sharing_base_dir }}"
+    project_name: "{{ jitsi_file_sharing_project_name }}"
+    state: absent
+    remove_images: local
+  when: jitsi_file_sharing_compose.stat.exists
+
+- name: Remove file sharing cleanup job
+  ansible.builtin.cron:
+    name: jitsi file sharing cleanup
+    cron_file: jitsi-file-sharing
+    user: root
+    state: absent
+
+- name: Remove file sharing from Jitsi config
+  ansible.builtin.file:
+    path: "{{ jitsi_config_dir }}/{{ item }}"
+    state: absent
+  loop:
+    - prosody/config/conf.d/file-sharing.cfg.lua
+    - prosody/config/file-sharing
+    - prosody/prosody-plugins-custom/mod_file_sharing_everyone.lua
+    - web/nginx-custom/file-sharing.conf
+  notify: Restart jitsi
+
+- name: Check custom-config.js
+  ansible.builtin.stat:
+    path: "{{ jitsi_config_dir }}/web/custom-config.js"
+  register: jitsi_file_sharing_custom_config
+
+- name: Remove file sharing from config.js
+  ansible.builtin.blockinfile:
+    path: "{{ jitsi_config_dir }}/web/custom-config.js"
+    marker: "// {mark} ANSIBLE MANAGED BLOCK file sharing"
+    state: absent
+  when: jitsi_file_sharing_custom_config.stat.exists
+  notify: Restart jitsi
+
+- name: Remove file sharing directory
+  ansible.builtin.file:
+    path: "{{ jitsi_file_sharing_base_dir }}"
+    state: absent

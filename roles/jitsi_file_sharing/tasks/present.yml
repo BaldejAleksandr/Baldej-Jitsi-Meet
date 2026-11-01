@@ -1,0 +1,203 @@
+---
+- name: Check file sharing settings
+  ansible.builtin.assert:
+    that:
+      - jitsi_public_url | length > 0
+      - jitsi_file_sharing_max_file_size_mb | int > 0
+      - jitsi_file_sharing_retention_hours | int > 0
+      - jitsi_file_sharing_max_total_size_bytes | int > jitsi_file_sharing_max_file_size_bytes | int
+      - jitsi_file_sharing_allowed_extensions | length > 0
+      - jitsi_file_sharing_allowed_extensions | select('match', '^[A-Za-z0-9]+$') | list | length
+        == jitsi_file_sharing_allowed_extensions | length
+      - "'XMPP_MODULES' not in jitsi_extra_env"
+      - "'XMPP_MUC_MODULES' not in jitsi_extra_env"
+    fail_msg: >-
+      Нужны jitsi_public_url, положительные размер файла и срок хранения,
+      общий лимит больше размера одного файла,
+      непустой список расширений из букв и цифр без точки (pdf, xlsx, ods);
+      XMPP_MODULES и XMPP_MUC_MODULES при включённом обмене файлами задаёт роль jitsi.
+
+# ---------- Сервис хранения файлов ----------
+
+- name: Create file sharing directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.owner | default('root') }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    - path: "{{ jitsi_file_sharing_base_dir }}"
+    - path: "{{ jitsi_file_sharing_src_dir }}/app"
+    - path: "{{ jitsi_file_sharing_base_dir }}/keys"
+    - path: "{{ jitsi_file_sharing_base_dir }}/uploads"
+      owner: "{{ jitsi_file_sharing_uid }}"
+      mode: "0750"
+
+- name: Download jitsi-meet-file-sharing-service {{ jitsi_file_sharing_service_version[:12] }}
+  ansible.builtin.unarchive:
+    src: "https://github.com/jitsi/jitsi-meet-file-sharing-service/archive/{{ jitsi_file_sharing_service_version }}.tar.gz"
+    dest: "{{ jitsi_file_sharing_src_dir }}/app"
+    remote_src: true
+    extra_opts: [--strip-components=1]
+    creates: "{{ jitsi_file_sharing_src_dir }}/app/package.json"
+  register: jitsi_file_sharing_source
+
+- name: Copy Dockerfile and patches
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ jitsi_file_sharing_src_dir }}/{{ item }}"
+    mode: "0644"
+  loop:
+    - Dockerfile
+    - patch.sh
+  register: jitsi_file_sharing_build_files
+
+- name: Generate key for short-lived tokens
+  ansible.builtin.command:
+    cmd: openssl genrsa -out short_lived_token.key 2048
+    chdir: "{{ jitsi_file_sharing_base_dir }}/keys"
+    creates: "{{ jitsi_file_sharing_base_dir }}/keys/short_lived_token.key"
+
+- name: Extract public key for the service
+  ansible.builtin.command:
+    cmd: openssl rsa -in short_lived_token.key -pubout -out short_lived_token.pub
+    chdir: "{{ jitsi_file_sharing_base_dir }}/keys"
+    creates: "{{ jitsi_file_sharing_base_dir }}/keys/short_lived_token.pub"
+
+- name: Set key permissions
+  ansible.builtin.file:
+    path: "{{ jitsi_file_sharing_base_dir }}/keys/{{ item.name }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { name: short_lived_token.key, mode: "0600" }
+    - { name: short_lived_token.pub, mode: "0644" }
+
+- name: Generate secret for download links
+  ansible.builtin.shell:
+    cmd: umask 077 && printf 'PRESIGNED_URL_SECRET=%s\n' "$(openssl rand -hex 32)" > secret.env
+    chdir: "{{ jitsi_file_sharing_base_dir }}"
+    creates: "{{ jitsi_file_sharing_base_dir }}/secret.env"
+
+- name: Render compose file
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ jitsi_file_sharing_base_dir }}/compose.yml"
+    mode: "0644"
+
+- name: Point compose build context to {{ jitsi_file_sharing_service_version[:12] }}
+  ansible.builtin.file:
+    src: "{{ jitsi_file_sharing_src_dir }}"
+    dest: "{{ jitsi_file_sharing_base_dir }}/build"
+    state: link
+
+- name: Start file sharing service
+  community.docker.docker_compose_v2:
+    project_src: "{{ jitsi_file_sharing_base_dir }}"
+    project_name: "{{ jitsi_file_sharing_project_name }}"
+    build: "{{ 'always' if (jitsi_file_sharing_source is changed or jitsi_file_sharing_build_files is changed) else 'policy' }}"
+    # образ собирается локально, из реестра его не тянем
+    pull: never
+    remove_orphans: true
+    state: present
+
+- name: Delete files older than {{ jitsi_file_sharing_retention_hours }} hours
+  ansible.builtin.cron:
+    name: jitsi file sharing cleanup
+    minute: "{{ jitsi_file_sharing_cleanup_minute }}"
+    hour: "{{ jitsi_file_sharing_cleanup_hour }}"
+    job: >-
+      find {{ jitsi_file_sharing_base_dir }}/uploads -mindepth 1 -type f
+      -mmin +{{ (jitsi_file_sharing_retention_hours | int) * 60 }} -delete
+    cron_file: jitsi-file-sharing
+    user: root
+
+# ---------- Подключение к Jitsi ----------
+
+- name: Create Jitsi config directories for file sharing
+  ansible.builtin.file:
+    path: "{{ jitsi_config_dir }}/{{ item.path }}"
+    state: directory
+    owner: "{{ jitsi_container_uid }}"
+    group: "{{ jitsi_container_uid }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    - path: prosody/config/conf.d
+    - path: prosody/config/file-sharing
+      mode: "0700"
+    - path: web/nginx-custom
+
+- name: Copy token key for Prosody
+  ansible.builtin.copy:
+    src: "{{ jitsi_file_sharing_base_dir }}/keys/short_lived_token.key"
+    dest: "{{ jitsi_config_dir }}/prosody/config/file-sharing/short_lived_token.key"
+    remote_src: true
+    owner: "{{ jitsi_container_uid }}"
+    group: "{{ jitsi_container_uid }}"
+    mode: "0600"
+  notify: Restart jitsi
+
+- name: Configure Prosody for file sharing
+  ansible.builtin.template:
+    src: file-sharing.cfg.lua.j2
+    dest: "{{ jitsi_config_dir }}/prosody/config/conf.d/file-sharing.cfg.lua"
+    owner: "{{ jitsi_container_uid }}"
+    group: "{{ jitsi_container_uid }}"
+    mode: "0644"
+  notify: Restart jitsi
+
+- name: Install Prosody module that allows upload for all participants
+  ansible.builtin.copy:
+    src: mod_file_sharing_everyone.lua
+    dest: "{{ jitsi_config_dir }}/prosody/prosody-plugins-custom/mod_file_sharing_everyone.lua"
+    owner: "{{ jitsi_container_uid }}"
+    group: "{{ jitsi_container_uid }}"
+    mode: "0644"
+  when: jitsi_file_sharing_upload_for_all | bool
+  notify: Restart jitsi
+
+- name: Remove Prosody module that allows upload for all participants
+  ansible.builtin.file:
+    path: "{{ jitsi_config_dir }}/prosody/prosody-plugins-custom/mod_file_sharing_everyone.lua"
+    state: absent
+  when: not (jitsi_file_sharing_upload_for_all | bool)
+  notify: Restart jitsi
+
+- name: Proxy /file-service/ in Jitsi web nginx
+  ansible.builtin.template:
+    src: nginx-file-sharing.conf.j2
+    dest: "{{ jitsi_config_dir }}/web/nginx-custom/file-sharing.conf"
+    owner: "{{ jitsi_container_uid }}"
+    group: "{{ jitsi_container_uid }}"
+    mode: "0644"
+  notify: Restart jitsi
+
+- name: Enable file sharing in config.js
+  ansible.builtin.blockinfile:
+    path: "{{ jitsi_config_dir }}/web/custom-config.js"
+    create: true
+    owner: "{{ jitsi_container_uid }}"
+    group: "{{ jitsi_container_uid }}"
+    mode: "0644"
+    marker: "// {mark} ANSIBLE MANAGED BLOCK file sharing"
+    block: |
+      config.fileSharing = {
+          apiUrl: '{{ jitsi_public_url | regex_replace('/+$', '') }}/file-service/v1/documents',
+          enabled: true,
+          maxFileSize: {{ jitsi_file_sharing_max_file_size_bytes }},
+      };
+  notify: Restart jitsi
+
+- name: Apply Jitsi restart
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for file sharing service behind Jitsi web
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ jitsi_http_port }}/file-service/health"
+    status_code: 200
+  register: jitsi_file_sharing_health
+  until: jitsi_file_sharing_health is succeeded
+  retries: 30
+  delay: 5

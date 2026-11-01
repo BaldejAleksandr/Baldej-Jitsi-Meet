@@ -1,0 +1,31 @@
+# {{ ansible_managed }}
+services:
+  file-sharing:
+    build: ./build
+    image: jitsi-file-sharing:{{ jitsi_file_sharing_service_version[:12] }}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    env_file: secret.env
+    environment:
+      PORT: "3000"
+      BASE_URL: "{{ jitsi_public_url | regex_replace('/+$', '') }}/file-service"
+      UPLOAD_DIR: /uploads
+      JWT_PUBLIC_KEY_PATH: /keys/short_lived_token.pub
+      MAX_FILE_SIZE_BYTES: "{{ jitsi_file_sharing_max_file_size_bytes }}"
+      MAX_TOTAL_SIZE_BYTES: "{{ jitsi_file_sharing_max_total_size_bytes }}"
+      ALLOWED_EXTENSIONS: "{{ jitsi_file_sharing_allowed_extensions | map('lower') | join(',') }}"
+      TRUST_PROXY_HOPS: "{{ jitsi_file_sharing_trusted_proxy_hops }}"
+    volumes:
+      - ./uploads:/uploads
+      - ./keys/short_lived_token.pub:/keys/short_lived_token.pub:ro
+    networks:
+      jitsi:
+        aliases:
+          - file-sharing.meet.jitsi
+
+networks:
+  jitsi:
+    name: {{ jitsi_file_sharing_jitsi_network }}
+    external: true

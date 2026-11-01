@@ -1,0 +1,3 @@
+---
+# Скопируйте в site.yml (рядом) и укажите адрес, по которому Jitsi открывается в браузере.
+jitsi_public_url: https://meet.example.com

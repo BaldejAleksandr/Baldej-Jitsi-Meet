@@ -1,0 +1,7 @@
+---
+- name: Restart jitsi
+  community.docker.docker_compose_v2:
+    project_src: "{{ jitsi_base_dir }}/current"
+    project_name: "{{ jitsi_project_name }}"
+    files: "{{ jitsi_compose_files }}"
+    state: restarted

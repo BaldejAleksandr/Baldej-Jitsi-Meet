@@ -1,0 +1,16 @@
+---
+# Роль запускается после роли jitsi: использует её переменные
+# (jitsi_config_dir, jitsi_public_url, jitsi_http_port) и handler "Restart jitsi".
+- name: Set file sharing facts
+  ansible.builtin.set_fact:
+    jitsi_file_sharing_max_file_size_bytes: "{{ (jitsi_file_sharing_max_file_size_mb | int) * 1024 * 1024 }}"
+    jitsi_file_sharing_max_total_size_bytes: "{{ ((jitsi_file_sharing_max_total_size_gb | float) * 1024 * 1024 * 1024) | int }}"
+    jitsi_file_sharing_src_dir: "{{ jitsi_file_sharing_base_dir }}/src/{{ jitsi_file_sharing_service_version }}"
+
+- name: Install file sharing
+  ansible.builtin.include_tasks: present.yml
+  when: jitsi_file_sharing_enabled | bool
+
+- name: Remove file sharing
+  ansible.builtin.include_tasks: absent.yml
+  when: not (jitsi_file_sharing_enabled | bool)

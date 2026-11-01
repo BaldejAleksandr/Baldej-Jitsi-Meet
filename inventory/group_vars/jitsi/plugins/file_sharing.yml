@@ -1,0 +1,33 @@
+---
+# Обмен файлами в чате — роль jitsi_file_sharing.
+jitsi_file_sharing_enabled: true          # false — роль удалит сервис и отключит вкладку «Файлы»
+jitsi_file_sharing_upload_for_all: true   # false — загружать могут только модераторы
+
+jitsi_file_sharing_max_file_size_mb: 10   # максимальный размер одного файла, МБ
+jitsi_file_sharing_max_total_size_gb: 5   # общий объём файлов на диске, ГБ; сверх него удаляются самые старые
+jitsi_file_sharing_retention_hours: 24    # через сколько часов файлы удаляются
+
+# Когда запускать удаление старых файлов (поля cron, по часовому поясу сервера). Сейчас: каждые 10 минут.
+# Каждый час: minute "0", hour "*"; раз в сутки в 04:30: minute "30", hour "4".
+jitsi_file_sharing_cleanup_minute: "*/10"
+jitsi_file_sharing_cleanup_hour: "*"
+
+# Какие файлы можно загружать: расширения без точки
+jitsi_file_sharing_allowed_extensions:
+  - pdf
+  - txt
+  - csv
+  - doc
+  - docx
+  - xls
+  - xlsx
+  - ppt
+  - pptx
+  - odt
+  - ods
+  - odp
+  - jpg
+  - jpeg
+  - png
+  - gif
+  - webp

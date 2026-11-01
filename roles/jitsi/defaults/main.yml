@@ -1,0 +1,26 @@
+---
+jitsi_version: stable-11248-2
+jitsi_base_dir: /opt/jitsi-meet
+jitsi_config_dir: /opt/jitsi-meet-cfg
+jitsi_project_name: jitsi
+jitsi_container_uid: 1000
+jitsi_public_url: ""
+jitsi_advertise_ips: ""
+jitsi_tz: UTC
+jitsi_http_port: 8000
+jitsi_https_port: 8443
+jitsi_enable_recording: true
+jitsi_enable_auth: false
+
+# Автоочистка записей Jibri (работает при jitsi_enable_recording: true).
+# Запись удаляется, если она старше срока или если все записи вместе больше лимита
+# (тогда удаляются самые старые). Идущую запись очистка не трогает.
+jitsi_recordings_dir: "{{ jitsi_config_dir }}/storage/jibri/recordings"
+jitsi_recordings_retention_days: 30
+jitsi_recordings_max_total_size_gb: 15
+# Когда запускать очистку — поля cron: минута и час.
+# Каждые 15 минут: minute "*/15", hour "*". Раз в сутки в 04:00: minute "0", hour "4".
+jitsi_recordings_cleanup_minute: "*/15"
+jitsi_recordings_cleanup_hour: "*"
+# Дополнительные переменные для .env, например {ENABLE_LOBBY: 1}
+jitsi_extra_env: {}

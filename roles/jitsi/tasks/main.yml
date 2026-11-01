@@ -1,0 +1,115 @@
+---
+- name: Check required variables
+  ansible.builtin.assert:
+    that:
+      - jitsi_public_url | length > 0
+      - jitsi_advertise_ips | length > 0
+      - jitsi_jicofo_auth_password is defined
+      - jitsi_jvb_auth_password is defined
+      - jitsi_recordings_retention_days | int > 0
+      - jitsi_recordings_max_total_size_gb | float > 0
+      - jitsi_recordings_dir is match(jitsi_config_dir ~ '/.+')
+
+- name: Set compose files list
+  ansible.builtin.set_fact:
+    jitsi_compose_files: "{{ ['docker-compose.yml'] + (['jibri.yml'] if jitsi_enable_recording else []) }}"
+
+- name: Check docker is installed
+  ansible.builtin.command: docker compose version
+  changed_when: false
+
+- name: Create release directory
+  ansible.builtin.file:
+    path: "{{ jitsi_base_dir }}/releases/{{ jitsi_version }}"
+    state: directory
+    mode: "0755"
+
+# Контейнеры работают от uid {{ jitsi_container_uid }} с read-only корнем
+- name: Create config and storage directories
+  ansible.builtin.file:
+    path: "{{ jitsi_config_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ jitsi_container_uid }}"
+    group: "{{ jitsi_container_uid }}"
+    mode: "0755"
+  loop:
+    - web
+    - web/custom-ca
+    - prosody/config
+    - prosody/custom-ca
+    - prosody/prosody-plugins-custom
+    - jicofo
+    - jicofo/custom-ca
+    - jvb
+    - jvb/custom-ca
+    - jibri
+    - jibri/custom-ca
+    - storage/web
+    - storage/prosody
+    - storage/transcripts
+    - storage/jibri
+    - tmp/web-load-test
+
+- name: Download and unpack docker-jitsi-meet {{ jitsi_version }}
+  ansible.builtin.unarchive:
+    src: "https://github.com/jitsi/docker-jitsi-meet/archive/refs/tags/{{ jitsi_version }}.tar.gz"
+    dest: "{{ jitsi_base_dir }}/releases/{{ jitsi_version }}"
+    remote_src: true
+    extra_opts: [--strip-components=1]
+    creates: "{{ jitsi_base_dir }}/releases/{{ jitsi_version }}/docker-compose.yml"
+
+- name: Render .env
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ jitsi_base_dir }}/releases/{{ jitsi_version }}/.env"
+    mode: "0600"
+  notify: Restart jitsi
+
+- name: Point current to {{ jitsi_version }}
+  ansible.builtin.file:
+    src: "{{ jitsi_base_dir }}/releases/{{ jitsi_version }}"
+    dest: "{{ jitsi_base_dir }}/current"
+    state: link
+
+- name: Start jitsi
+  community.docker.docker_compose_v2:
+    project_src: "{{ jitsi_base_dir }}/current"
+    project_name: "{{ jitsi_project_name }}"
+    files: "{{ jitsi_compose_files }}"
+    pull: missing
+    remove_orphans: true
+    state: present
+
+- name: Wait for web on port {{ jitsi_http_port }}
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ jitsi_http_port }}/"
+    status_code: 200
+  register: jitsi_web
+  until: jitsi_web is succeeded
+  retries: 30
+  delay: 5
+
+# ---------- Автоочистка записей Jibri ----------
+
+- name: Install recordings cleanup script
+  ansible.builtin.template:
+    src: jitsi-recordings-cleanup.sh.j2
+    dest: /usr/local/sbin/jitsi-recordings-cleanup
+    mode: "0755"
+  when: jitsi_enable_recording | bool
+
+- name: Schedule recordings cleanup
+  ansible.builtin.cron:
+    name: jitsi recordings cleanup
+    minute: "{{ jitsi_recordings_cleanup_minute }}"
+    hour: "{{ jitsi_recordings_cleanup_hour }}"
+    job: /usr/local/sbin/jitsi-recordings-cleanup
+    cron_file: jitsi-recordings-cleanup
+    user: root
+    state: "{{ 'present' if jitsi_enable_recording | bool else 'absent' }}"
+
+- name: Remove recordings cleanup script
+  ansible.builtin.file:
+    path: /usr/local/sbin/jitsi-recordings-cleanup
+    state: absent
+  when: not (jitsi_enable_recording | bool)

@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible and collections
+        run: |
+          pip install 'ansible-core>=2.17,<2.19'
+          ansible-galaxy collection install -r requirements.yml -p ./collections
+
+      - name: Use example inventory and secrets
+        run: |
+          cp inventory/hosts.yml.example inventory/hosts.yml
+          cp inventory/group_vars/jitsi/site.yml.example inventory/group_vars/jitsi/site.yml
+          cp inventory/group_vars/jitsi/vault.yml.example inventory/group_vars/jitsi/vault.yml
+          echo ci-dummy > .vault_pass
+
+      - name: Validate ansible.cfg
+        run: ansible-config validate -t all
+
+      - name: Syntax check
+        run: ansible-playbook playbooks/deploy.yml --syntax-check
+
+      - name: Check shell script syntax
+        run: sh -n roles/jitsi_file_sharing/files/patch.sh

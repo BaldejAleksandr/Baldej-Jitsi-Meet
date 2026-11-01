@@ -1,0 +1,7 @@
+---
+- name: Deploy Jitsi Meet
+  hosts: jitsi
+  roles:
+    - jitsi
+    # Обмен файлами в чате; включается jitsi_file_sharing_enabled в vars.yml
+    - jitsi_file_sharing

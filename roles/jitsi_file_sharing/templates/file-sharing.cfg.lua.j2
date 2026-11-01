@@ -1,0 +1,31 @@
+-- {{ ansible_managed }}
+-- Обмен файлами в чате. Prosody подключает файл через Include "conf.d/*.cfg.lua".
+-- Модули short_lived_token, external_services и file_sharing_everyone включаются переменными
+-- XMPP_MODULES и XMPP_MUC_MODULES в .env (роль jitsi).
+
+-- Короткоживущие токены, которыми клиент авторизуется в сервисе файлов
+short_lived_token = {
+    issuer = "prosody";
+    accepted_audiences = { "file-sharing" };
+    key_path = "/run/prosody/config/file-sharing/short_lived_token.key";
+    key_id = "jitsi/short_lived_token";
+    ttl_seconds = 30;
+};
+
+-- Права модератора без JWT: значения по умолчанию из mod_jitsi_permissions + file-upload
+jitsi_default_permissions = {
+    livestreaming = true;
+    recording = true;
+    transcription = true;
+    ["outbound-call"] = true;
+    ["create-polls"] = true;
+    ["send-groupchat"] = true;
+    flip = true;
+    ["live-translation"] = true;
+    ["live-translation-subscribe"] = true;
+    ["file-upload"] = true;
+};
+
+-- Хранит список файлов комнаты и рассылает его участникам
+Component "filesharing.{{ jitsi_file_sharing_xmpp_domain }}" "filesharing_component"
+    muc_component = "{{ jitsi_file_sharing_xmpp_muc_domain }}"
