@@ -1,100 +1,102 @@
-# Jitsi Meet в Docker через Ansible
+# Jitsi Meet in Docker via Ansible
 
-Разворачивает [Jitsi Meet](https://jitsi.org/) из официального
-[docker-jitsi-meet](https://github.com/jitsi/docker-jitsi-meet) на один сервер и добавляет то, чего нет
-в стандартной установке:
+**English** | [Русский](README.ru.md)
 
-- **обмен файлами в чате** — вкладка «Файлы», перетаскивание мышью, скачивание остальными участниками;
-  без JWT, загрузка для всех участников или только для модераторов;
-- **автоочистка** файлов из чата и записей конференций (Jibri) — по сроку хранения и общему объёму;
-- **настройки по файлам**: основное в `vars.yml`, каждая функция — в своём файле в `plugins/`.
+Deploys [Jitsi Meet](https://jitsi.org/) from the official
+[docker-jitsi-meet](https://github.com/jitsi/docker-jitsi-meet) to a single server and adds what the standard
+setup lacks:
 
-## Требования
+- **file sharing in chat** — a "Files" tab with drag and drop; other participants see and download the files;
+  no JWT needed, upload for all participants or moderators only;
+- **automatic cleanup** of chat files and conference recordings (Jibri) by age and total size;
+- **per-feature config**: core settings in `vars.yml`, each feature in its own file under `plugins/`.
 
-- Сервер на Linux с Docker и Docker Compose v2, доступ по SSH (проверено на Ubuntu);
-- домен и обратный прокси с HTTPS перед Jitsi (например, [Nginx Proxy Manager](https://nginxproxymanager.com/)):
-  Jitsi слушает HTTP на порту `jitsi_http_port` (по умолчанию 8000), прокси делает `https://<домен>` → `http://<сервер>:8000`;
-- открытый UDP-порт 10000 для видео (JVB);
-- на своей машине: Python 3.10+, `openssl`.
+## Requirements
 
-## Быстрый старт
+- A Linux server with Docker and Docker Compose v2, reachable over SSH (tested on Ubuntu);
+- a domain and an HTTPS reverse proxy in front of Jitsi (for example, [Nginx Proxy Manager](https://nginxproxymanager.com/)):
+  Jitsi listens for HTTP on `jitsi_http_port` (8000 by default), the proxy forwards `https://<domain>` → `http://<server>:8000`;
+- UDP port 10000 open for media (JVB);
+- on your machine: Python 3.10+, `openssl`.
+
+## Quick start
 
 ```bash
-git clone https://github.com/<you>/<repo>.git && cd <repo>
+git clone https://github.com/BaldejAleksandr/Baldej-Jitsi-Meet.git && cd Baldej-Jitsi-Meet
 
-# Ansible и коллекции — в каталоге проекта
+# Ansible and collections inside the project directory
 python3 -m venv .venv
 .venv/bin/pip install 'ansible-core>=2.17,<2.19'
 .venv/bin/ansible-galaxy collection install -r requirements.yml -p ./collections
 source .venv/bin/activate
 
-# Свой сервер и домен
-cp inventory/hosts.yml.example inventory/hosts.yml                                  # IP, пользователь, SSH-ключ
+# Your server and domain
+cp inventory/hosts.yml.example inventory/hosts.yml                                  # IP, user, SSH key
 cp inventory/group_vars/jitsi/site.yml.example inventory/group_vars/jitsi/site.yml  # jitsi_public_url
 
-# Пароли сервисов: ключ vault + случайные пароли, сразу зашифровать
+# Service passwords: a vault key + random passwords, encrypted right away
 openssl rand -base64 32 > .vault_pass && chmod 600 .vault_pass
 for k in jicofo_auth jvb_auth jigasi_xmpp jigasi_transcriber jibri_recorder jibri_xmpp; do
   echo "vault_jitsi_${k}_password: $(openssl rand -hex 16)"
 done > inventory/group_vars/jitsi/vault.yml
 ansible-vault encrypt inventory/group_vars/jitsi/vault.yml
 
-# Проверить и развернуть
+# Check and deploy
 ansible-playbook playbooks/deploy.yml --check --diff
 ansible-playbook playbooks/deploy.yml --diff
 ```
 
-`.vault_pass` — единственный ключ к `vault.yml`: храните копию в менеджере паролей, без него пароли
-не расшифровать. Пароль vault Ansible берёт из этого файла сам (см. `ansible.cfg`).
+`.vault_pass` is the only key to `vault.yml`: keep a copy in a password manager, the passwords cannot be
+decrypted without it. Ansible reads the vault password from this file automatically (see `ansible.cfg`).
 
-## Структура
+## Layout
 
 ```text
-ansible.cfg                       настройки Ansible: инвентарь, роли, коллекции, файл пароля vault
-requirements.yml                  коллекции: community.docker, ansible.posix
-playbooks/deploy.yml              установка и обновление
+ansible.cfg                       Ansible settings: inventory, roles, collections, vault password file
+requirements.yml                  collections: community.docker, ansible.posix
+playbooks/deploy.yml              install and update
 inventory/
-├── hosts.yml(.example)           сервер (hosts.yml не в git)
-└── group_vars/jitsi/             Ansible читает все .yml отсюда, включая подкаталоги
-    ├── vars.yml                  основное: версия Jitsi, порты, ссылки на пароли
-    ├── site.yml(.example)        адрес Jitsi (site.yml не в git)
-    ├── vault.yml(.example)       пароли сервисов, ansible-vault (vault.yml не в git)
+├── hosts.yml(.example)           the server (hosts.yml is not in git)
+└── group_vars/jitsi/             Ansible reads every .yml here, subdirectories included
+    ├── vars.yml                  core: Jitsi version, ports, password references
+    ├── site.yml(.example)        Jitsi URL (site.yml is not in git)
+    ├── vault.yml(.example)       service passwords, ansible-vault (vault.yml is not in git)
     └── plugins/
-        ├── recordings.yml        запись конференций и автоочистка записей
-        └── file_sharing.yml      обмен файлами в чате
+        ├── recordings.yml        conference recording and recordings cleanup
+        └── file_sharing.yml      file sharing in chat
 roles/
-├── jitsi/                        docker-jitsi-meet: релиз, .env, compose, очистка записей
-└── jitsi_file_sharing/           сервис файлов и подключение его к Jitsi
-docs/                             заметки по эксплуатации
+├── jitsi/                        docker-jitsi-meet: release, .env, compose, recordings cleanup
+└── jitsi_file_sharing/           file sharing service and its integration with Jitsi
+docs/                             operations notes (in Russian)
 ```
 
-Одну переменную задавайте только в одном файле: при повторе молча победит файл, прочитанный позже.
-Итоговые значения: `ansible-inventory --host <имя хоста> --yaml`.
+Set each variable in one file only: if it is repeated, the file read later wins silently.
+Resulting values: `ansible-inventory --host <host name> --yaml`.
 
-На сервере:
+On the server:
 
-| Путь | Что там |
+| Path | Contents |
 |---|---|
-| `/opt/jitsi-meet/releases/<версия>`, `/opt/jitsi-meet/current` | файлы релиза docker-jitsi-meet и симлинк на активный |
-| `/opt/jitsi-meet-cfg` | конфиги и данные контейнеров Jitsi |
-| `/opt/jitsi-meet-cfg/storage/jibri/recordings` | записи конференций |
-| `/opt/jitsi-file-sharing` | сервис файлов: исходники, ключи, `uploads/` |
+| `/opt/jitsi-meet/releases/<version>`, `/opt/jitsi-meet/current` | docker-jitsi-meet release files and a symlink to the active one |
+| `/opt/jitsi-meet-cfg` | Jitsi container configs and data |
+| `/opt/jitsi-meet-cfg/storage/jibri/recordings` | conference recordings |
+| `/opt/jitsi-file-sharing` | file sharing service: sources, keys, `uploads/` |
 
-Compose-проекты: `jitsi` и `jitsi-file-sharing`.
+Compose projects: `jitsi` and `jitsi-file-sharing`.
 
-## Настройка
+## Configuration
 
-### Основное — `vars.yml` и `site.yml`
+### Core — `vars.yml` and `site.yml`
 
-| Переменная | По умолчанию | Что задаёт |
+| Variable | Default | Purpose |
 |---|---|---|
-| `jitsi_public_url` | — (обязательно, в `site.yml`) | адрес, по которому Jitsi открывается в браузере |
-| `jitsi_version` | `stable-11248-2` | тег [docker-jitsi-meet](https://github.com/jitsi/docker-jitsi-meet/releases) |
-| `jitsi_http_port` / `jitsi_https_port` | `8000` / `8443` | порты веб-контейнера |
-| `jitsi_advertise_ips` | `ansible_host` | публичный IP для видео (JVB) |
-| `jitsi_tz` | `UTC` | часовой пояс контейнеров |
-| `jitsi_enable_auth` | `false` | вход по логину для создания комнат |
-| `jitsi_extra_env` | `{}` | любые переменные из `env.example` релиза |
+| `jitsi_public_url` | — (required, in `site.yml`) | the URL users open in the browser |
+| `jitsi_version` | `stable-11248-2` | [docker-jitsi-meet](https://github.com/jitsi/docker-jitsi-meet/releases) tag |
+| `jitsi_http_port` / `jitsi_https_port` | `8000` / `8443` | web container ports |
+| `jitsi_advertise_ips` | `ansible_host` | public IP for media (JVB) |
+| `jitsi_tz` | `UTC` | container time zone |
+| `jitsi_enable_auth` | `false` | require login to create rooms |
+| `jitsi_extra_env` | `{}` | any variable from the release's `env.example` |
 
 ```yaml
 jitsi_extra_env:
@@ -102,74 +104,74 @@ jitsi_extra_env:
   JIBRI_RECORDING_RESOLUTION: 1920x1080
 ```
 
-Обновление Jitsi: поменять `jitsi_version` и запустить `deploy.yml`.
+Updating Jitsi: change `jitsi_version` and run `deploy.yml`.
 
-### Записи конференций — `plugins/recordings.yml`
+### Recordings — `plugins/recordings.yml`
 
 ```yaml
 jitsi_enable_recording: true
-jitsi_recordings_retention_days: 30       # сколько дней хранить запись
-jitsi_recordings_max_total_size_gb: 15    # общий объём; сверх него удаляются самые старые
-jitsi_recordings_cleanup_minute: "0"      # расписание очистки, поля cron
+jitsi_recordings_retention_days: 30       # how many days to keep a recording
+jitsi_recordings_max_total_size_gb: 15    # total size; the oldest recordings above it are deleted
+jitsi_recordings_cleanup_minute: "0"      # cleanup schedule, cron fields
 jitsi_recordings_cleanup_hour: "*/4"
 ```
 
-Очистку выполняет `/usr/local/sbin/jitsi-recordings-cleanup` по cron. Идущую запись она не трогает:
-пропускаются записи, менявшиеся за последние 10 минут. Журнал: `journalctl -t jitsi-recordings-cleanup`.
+Cleanup is done by `/usr/local/sbin/jitsi-recordings-cleanup` from cron. It never touches a recording in progress:
+recordings changed within the last 10 minutes are skipped. Log: `journalctl -t jitsi-recordings-cleanup`.
 
-Ориентир по размеру при настройках Jibri по умолчанию (720p, 30 кадров/с, H.264 CRF 25):
-от ~2 ГБ (статичная картинка) до ~15 ГБ (активная демонстрация экрана) за 8 часов.
+Size estimate with default Jibri settings (720p, 30 fps, H.264 CRF 25):
+from ~2 GB (mostly static picture) to ~15 GB (active screen sharing) per 8 hours.
 
-### Обмен файлами — `plugins/file_sharing.yml`
+### File sharing — `plugins/file_sharing.yml`
 
 ```yaml
-jitsi_file_sharing_enabled: true          # false — роль удалит сервис и отключит вкладку
-jitsi_file_sharing_upload_for_all: true   # false — загружать могут только модераторы
+jitsi_file_sharing_enabled: true          # false — the role removes the service and hides the tab
+jitsi_file_sharing_upload_for_all: true   # false — moderators only
 jitsi_file_sharing_max_file_size_mb: 10
-jitsi_file_sharing_max_total_size_gb: 5   # перед загрузкой сервис удаляет самые старые файлы сверх лимита
+jitsi_file_sharing_max_total_size_gb: 5   # before an upload, the service deletes the oldest files above the limit
 jitsi_file_sharing_retention_hours: 24
-jitsi_file_sharing_cleanup_minute: "*/10" # расписание удаления по сроку, поля cron
+jitsi_file_sharing_cleanup_minute: "*/10" # schedule of age-based cleanup, cron fields
 jitsi_file_sharing_cleanup_hour: "*"
-jitsi_file_sharing_allowed_extensions:    # расширения без точки
+jitsi_file_sharing_allowed_extensions:    # extensions without the dot
   - pdf
   - xlsx
   - ods
 ```
 
-Как это устроено:
+How it works:
 
-- хранилище — официальный пример [jitsi-meet-file-sharing-service](https://github.com/jitsi/jitsi-meet-file-sharing-service)
-  на зафиксированном коммите (`jitsi_file_sharing_service_version`). Образ собирается на сервере;
-  перед сборкой `roles/jitsi_file_sharing/files/patch.sh` вносит правки: лимит размера и список расширений
-  из переменных, общий лимит объёма, учёт обратного прокси при ограничении частоты запросов;
-- Prosody: `conf.d/file-sharing.cfg.lua` (короткоживущие токены, права, компонент `filesharing`), модули через
-  `XMPP_MODULES` / `XMPP_MUC_MODULES` в `.env` — не задавайте их в `jitsi_extra_env`;
-  модуль `mod_file_sharing_everyone.lua` выдаёт право загрузки участникам без прав модератора;
-- web: `nginx-custom/file-sharing.conf` проксирует `/file-service/` в сервис, блок `config.fileSharing` в `custom-config.js`.
+- storage is the official example [jitsi-meet-file-sharing-service](https://github.com/jitsi/jitsi-meet-file-sharing-service)
+  pinned to a commit (`jitsi_file_sharing_service_version`). The image is built on the server;
+  before the build, `roles/jitsi_file_sharing/files/patch.sh` applies changes: file size limit and allowed extensions
+  from variables, a total size limit, and reverse proxy awareness for rate limiting;
+- Prosody: `conf.d/file-sharing.cfg.lua` (short-lived tokens, permissions, the `filesharing` component), modules via
+  `XMPP_MODULES` / `XMPP_MUC_MODULES` in `.env` — do not set them in `jitsi_extra_env`;
+  the `mod_file_sharing_everyone.lua` module grants upload permission to non-moderator participants;
+- web: `nginx-custom/file-sharing.conf` proxies `/file-service/` to the service, a `config.fileSharing` block in `custom-config.js`.
 
-Безопасность: тип файла определяется по расширению из списка, исполняемые файлы (ELF, PE, Mach-O) отклоняются
-по содержимому; файлы отдаются на скачивание (`Content-Disposition: attachment`), а не открываются в браузере;
-ссылка на скачивание подписана и живёт 1 час. Антивирусной проверки нет — держите список расширений коротким.
+Security: the file type is derived from an allowed extension; executables (ELF, PE, Mach-O) are rejected
+by content; files are served as downloads (`Content-Disposition: attachment`), not opened in the browser;
+the download link is signed and valid for 1 hour. There is no antivirus scanning — keep the extension list short.
 
-Ограничения: список файлов комнаты хранится в памяти сервиса и теряется при его перезапуске
-(файлы на диске удалит очистка); удалить файл может любой участник с правом загрузки.
+Limitations: the room's file list is kept in the service's memory and is lost when it restarts
+(files on disk are removed by cleanup); any participant allowed to upload can delete a file.
 
-## Полезное
+## Handy commands
 
-- `ansible-playbook playbooks/deploy.yml --check --diff` — посмотреть изменения без применения;
-- `ansible-vault edit inventory/group_vars/jitsi/vault.yml` — изменить пароли;
-- `ansible-config validate -t all` — проверить `ansible.cfg` на опечатки;
-- [docs/filesystems-df.md](docs/filesystems-df.md) — как читать `df -h` на сервере с Docker.
+- `ansible-playbook playbooks/deploy.yml --check --diff` — preview changes without applying them;
+- `ansible-vault edit inventory/group_vars/jitsi/vault.yml` — edit passwords;
+- `ansible-config validate -t all` — check `ansible.cfg` for typos;
+- [docs/filesystems-df.md](docs/filesystems-df.md) — reading `df -h` on a Docker host (in Russian).
 
-## Сторонние компоненты
+## Third-party components
 
-В репозиторий они не копируются — всё скачивается при развёртывании:
+None of them are copied into this repository — everything is downloaded during deployment:
 
-- [docker-jitsi-meet](https://github.com/jitsi/docker-jitsi-meet) и образы Jitsi — Apache-2.0;
+- [docker-jitsi-meet](https://github.com/jitsi/docker-jitsi-meet) and the Jitsi images — Apache-2.0;
 - [jitsi-meet-file-sharing-service](https://github.com/jitsi/jitsi-meet-file-sharing-service) — Apache-2.0,
-  собирается с правками из `patch.sh`;
-- коллекции Ansible `community.docker` и `ansible.posix` — GPL-3.0.
+  built with the changes from `patch.sh`;
+- Ansible collections `community.docker` and `ansible.posix` — GPL-3.0.
 
-## Лицензия
+## License
 
 [MIT](LICENSE)
