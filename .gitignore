@@ -1,19 +1,19 @@
-# Окружение и скачанные зависимости (ставятся по README)
+# Environment and downloaded dependencies, installed per README - Окружение и скачанные зависимости, ставятся по README
 .venv/
 collections/
 
-# Секреты и данные конкретного сервера — в репозитории только *.example
+# Secrets and server-specific data, only *.example in the repo - Секреты и данные конкретного сервера, в репозитории только *.example
 .vault_pass
 inventory/hosts.yml
 inventory/group_vars/jitsi/site.yml
 inventory/group_vars/jitsi/vault.yml
 credentials.md
 
-# Локальные бэкапы и разовые плейбуки под конкретную установку
+# Local backups and one-off playbooks for a specific install - Локальные бэкапы и разовые плейбуки под конкретную установку
 backups/
 playbooks/remove_old.yml
 
-# Мусор Ansible и редакторов
+# Ansible and editor leftovers - Мусор Ansible и редакторов
 *.retry
 .cache/
 .vscode/

@@ -1,12 +1,13 @@
 #!/bin/bash
 # {{ ansible_managed }}
-# Автоочистка записей Jibri: удаляет записи старше срока хранения и самые старые
-# записи, пока общий объём больше лимита. Запуск — cron (роль jitsi).
+# Jibri recordings cleanup, run by cron (role jitsi) - Автоочистка записей Jibri, запускается cron (роль jitsi)
+# Deletes recordings past retention - Удаляет записи старше срока хранения
+# and the oldest ones while the total is over the limit - и самые старые, пока общий объём больше лимита
 #
-# Запись — это элемент верхнего уровня в $DIR: каталог сессии Jibri
-# (mp4 + metadata.json) или отдельный файл. Возраст записи считается по самому
-# свежему файлу внутри. Записи, которые менялись последние $ACTIVE_MINUTES минут,
-# не трогаются: Jibri ещё пишет их.
+# A recording is a top-level entry in $DIR - Запись: элемент верхнего уровня в $DIR
+# (a Jibri session dir with mp4 + metadata.json, or a file) - (каталог сессии Jibri с mp4 + metadata.json или файл)
+# Its age is the age of its newest file - Возраст записи считается по самому свежему файлу внутри
+# Entries changed in the last $ACTIVE_MINUTES minutes are skipped, Jibri is still writing - Записи, менявшиеся последние $ACTIVE_MINUTES минут, пропускаются: Jibri ещё пишет их
 set -euo pipefail
 
 DIR={{ jitsi_recordings_dir | quote }}
@@ -34,7 +35,7 @@ done < <(find "$DIR" -mindepth 1 -maxdepth 1 -print0)
 
 (( count )) || exit 0
 
-# от самых старых к самым новым
+# oldest first - от самых старых к самым новым
 mapfile -t sorted < <(printf '%s\n' "${entries[@]}" | sort -n)
 
 for item in "${sorted[@]}"; do

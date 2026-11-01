@@ -1,12 +1,13 @@
 ---
-# Запись конференций (Jibri) и автоочистка записей — роль jitsi.
-# Записи: /opt/jitsi-meet-cfg/storage/jibri/recordings
+# Conference recording (Jibri) and recordings cleanup, role jitsi - Запись конференций (Jibri) и автоочистка записей, роль jitsi
+# Recordings: /opt/jitsi-meet-cfg/storage/jibri/recordings - Записи: /opt/jitsi-meet-cfg/storage/jibri/recordings
 jitsi_enable_recording: true
 
-jitsi_recordings_retention_days: 30       # сколько дней хранить запись
-jitsi_recordings_max_total_size_gb: 15    # общий объём записей, ГБ; сверх него удаляются самые старые
+jitsi_recordings_retention_days: 30       # days to keep a recording - сколько дней хранить запись
+jitsi_recordings_max_total_size_gb: 15    # total size, GB; oldest deleted above it - общий объём, ГБ; сверх него удаляются самые старые
 
-# Когда запускать очистку (поля cron, по часовому поясу сервера — см. timedatectl). Сейчас: каждые 4 часа.
-# Каждые 15 минут: minute "*/15", hour "*"; раз в сутки в 04:00: minute "0", hour "4".
+# When to run the cleanup, cron fields, server time zone (timedatectl) - Когда запускать очистку, поля cron, часовой пояс сервера (timedatectl)
+# Now: every 4 hours - Сейчас: каждые 4 часа
+# Every 15 minutes: minute "*/15", hour "*"; daily at 04:00: minute "0", hour "4" - Каждые 15 минут: minute "*/15", hour "*"; раз в сутки в 04:00: minute "0", hour "4"
 jitsi_recordings_cleanup_minute: "0"
 jitsi_recordings_cleanup_hour: "*/4"

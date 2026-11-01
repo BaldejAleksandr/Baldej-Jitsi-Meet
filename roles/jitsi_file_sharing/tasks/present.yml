@@ -17,7 +17,7 @@
       непустой список расширений из букв и цифр без точки (pdf, xlsx, ods);
       XMPP_MODULES и XMPP_MUC_MODULES при включённом обмене файлами задаёт роль jitsi.
 
-# ---------- Сервис хранения файлов ----------
+# ---------- File storage service - Сервис хранения файлов ----------
 
 - name: Create file sharing directories
   ansible.builtin.file:
@@ -98,7 +98,7 @@
     project_src: "{{ jitsi_file_sharing_base_dir }}"
     project_name: "{{ jitsi_file_sharing_project_name }}"
     build: "{{ 'always' if (jitsi_file_sharing_source is changed or jitsi_file_sharing_build_files is changed) else 'policy' }}"
-    # образ собирается локально, из реестра его не тянем
+    # the image is built locally, never pulled from a registry - образ собирается локально, из реестра его не тянем
     pull: never
     remove_orphans: true
     state: present
@@ -114,7 +114,7 @@
     cron_file: jitsi-file-sharing
     user: root
 
-# ---------- Подключение к Jitsi ----------
+# ---------- Integration with Jitsi - Подключение к Jitsi ----------
 
 - name: Create Jitsi config directories for file sharing
   ansible.builtin.file:

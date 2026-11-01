@@ -1,6 +1,6 @@
 ---
-# Отключение: убираем настройки из Jitsi, останавливаем сервис и удаляем его
-# каталог вместе с загруженными файлами.
+# Disable: remove settings from Jitsi, stop the service - Отключение: убираем настройки из Jitsi, останавливаем сервис
+# and delete its directory with uploaded files - и удаляем его каталог вместе с загруженными файлами
 - name: Check file sharing compose file
   ansible.builtin.stat:
     path: "{{ jitsi_file_sharing_base_dir }}/compose.yml"

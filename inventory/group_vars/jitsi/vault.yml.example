@@ -1,5 +1,6 @@
 ---
-# Пароли внутренних сервисов Jitsi (не в git). Создать зашифрованный vault.yml со случайными паролями:
+# Passwords of internal Jitsi services, not in git - Пароли внутренних сервисов Jitsi, не в git
+# Create an encrypted vault.yml with random passwords - Создать зашифрованный vault.yml со случайными паролями:
 #
 #   openssl rand -base64 32 > .vault_pass && chmod 600 .vault_pass
 #   for k in jicofo_auth jvb_auth jigasi_xmpp jigasi_transcriber jibri_recorder jibri_xmpp; do
@@ -7,7 +8,7 @@
 #   done > inventory/group_vars/jitsi/vault.yml
 #   ansible-vault encrypt inventory/group_vars/jitsi/vault.yml
 #
-# Нужные переменные:
+# Required variables - Нужные переменные:
 vault_jitsi_jicofo_auth_password: CHANGE_ME
 vault_jitsi_jvb_auth_password: CHANGE_ME
 vault_jitsi_jigasi_xmpp_password: CHANGE_ME

@@ -1,6 +1,6 @@
 ---
-# Роль запускается после роли jitsi: использует её переменные
-# (jitsi_config_dir, jitsi_public_url, jitsi_http_port) и handler "Restart jitsi".
+# Runs after the jitsi role and uses its variables - Запускается после роли jitsi и использует её переменные
+# (jitsi_config_dir, jitsi_public_url, jitsi_http_port) and handler "Restart jitsi" - (jitsi_config_dir, jitsi_public_url, jitsi_http_port) и handler "Restart jitsi"
 - name: Set file sharing facts
   ansible.builtin.set_fact:
     jitsi_file_sharing_max_file_size_bytes: "{{ (jitsi_file_sharing_max_file_size_mb | int) * 1024 * 1024 }}"

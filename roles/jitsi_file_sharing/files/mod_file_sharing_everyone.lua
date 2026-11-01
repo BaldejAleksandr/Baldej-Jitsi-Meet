@@ -1,18 +1,16 @@
--- Gives the 'file-upload' feature to every participant that joined without a token.
--- Managed by Ansible (role jitsi_file_sharing). Load it on the main MUC component
--- (XMPP_MUC_MODULES in docker-jitsi-meet).
+-- Gives 'file-upload' to every participant without a token - Выдаёт право 'file-upload' каждому участнику без токена
+-- Managed by Ansible, role jitsi_file_sharing - Управляется Ansible, роль jitsi_file_sharing
+-- Load on the main MUC component (XMPP_MUC_MODULES) - Загружать на основном MUC-компоненте (XMPP_MUC_MODULES)
 --
--- mod_jitsi_permissions sends permissions (jitsi_default_permissions) only to
--- moderators. This module covers the other participants:
---   * a participant that is not a moderator and has no features gets
---     { ['file-upload'] = true }, and the client receives it in <permissions>;
---   * only this one feature is set. For a session with features a missing feature
---     means "not allowed", and a participant without features is not allowed
---     anything that needs moderator rights, so the other checks stay the same;
---   * when such a participant becomes a moderator, the features are removed before
---     mod_jitsi_permissions handles the grant, so the moderator gets the full
---     jitsi_default_permissions.
--- Sessions with a token are not touched: their features come from the token.
+-- mod_jitsi_permissions sends permissions only to moderators - mod_jitsi_permissions отправляет права только модераторам
+-- This module covers the other participants - Этот модуль отвечает за остальных участников:
+--   * a non-moderator without features gets { ['file-upload'] = true } - участник без прав модератора и без features получает { ['file-upload'] = true }
+--     and the client receives it in <permissions> - и клиент получает его в <permissions>
+--   * only this feature is set: a missing feature means "not allowed" - выдаётся только это право: отсутствующее право значит «запрещено»
+--     and a non-moderator had no moderator rights anyway - а без прав модератора участнику и так ничего лишнего не разрешено
+--   * on promotion to moderator the features are removed first - при повышении до модератора права сначала сбрасываются
+--     so the moderator gets the full jitsi_default_permissions - и модератор получает полный jitsi_default_permissions
+-- Sessions with a token are not touched - Сессии с токеном не трогаются: их права берутся из токена
 
 local filters = require 'util.filters';
 local jid = require 'util.jid';
@@ -44,15 +42,15 @@ local function copy_features(features)
     return res;
 end
 
--- Runs after the filter of mod_jitsi_permissions (priority -2), so it sees the
--- features that module has set for moderators.
+-- Runs after the mod_jitsi_permissions filter (priority -2) - Выполняется после фильтра mod_jitsi_permissions (приоритет -2)
+-- so it sees the features set for moderators - и видит права, выставленные модераторам
 local function filter_stanza(stanza, session)
     if stanza.name ~= 'presence' or not stanza.attr or not stanza.attr.to
         or stanza.attr.type == 'unavailable' then
         return stanza;
     end
 
-    -- token users get their features from the token; already handled sessions skip
+    -- token users get features from the token; handled sessions are skipped - у пользователей с токеном права из токена; обработанные сессии пропускаем
     if session.auth_token or session.jitsi_meet_context_features then
         return stanza;
     end
@@ -61,7 +59,7 @@ local function filter_stanza(stanza, session)
         return stanza;
     end
 
-    -- only the self-presence of the participant
+    -- only the participant's own presence - только собственный presence участника
     local muc_x = stanza:get_child('x', MUC_NS..'#user');
     if not muc_x or not presence_check_status(muc_x, '110') then
         return stanza;
@@ -74,7 +72,7 @@ local function filter_stanza(stanza, session)
 
     for item in muc_x:childtags('item') do
         if item.attr.role == 'moderator' then
-            -- moderators are handled by mod_jitsi_permissions
+            -- moderators are handled by mod_jitsi_permissions - модераторами занимается mod_jitsi_permissions
             return stanza;
         end
     end
@@ -91,8 +89,8 @@ local function filter_stanza(stanza, session)
     return stanza;
 end
 
--- Before mod_jitsi_permissions (default priority 0) handles a grant of owner,
--- drop the features set here, so the new moderator gets the default permissions.
+-- Before mod_jitsi_permissions (priority 0) handles an owner grant - До того как mod_jitsi_permissions (приоритет 0) обработает выдачу owner
+-- drop the features set here so the moderator gets the defaults - сбрасываем права, выданные здесь, чтобы модератор получил права по умолчанию
 module:hook('muc-pre-set-affiliation', function(event)
     if event.affiliation ~= 'owner' then
         return;

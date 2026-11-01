@@ -1,19 +1,19 @@
 ---
-# Основные настройки Jitsi. Рядом:
-#   site.yml                 — данные вашего сервера (URL), не в git; пример: site.yml.example
-#   vault.yml                — пароли сервисов (ansible-vault), не в git; пример: vault.yml.example
-#   plugins/recordings.yml   — запись конференций и автоочистка записей
-#   plugins/file_sharing.yml — обмен файлами в чате
+# Core Jitsi settings. Next to this file - Основные настройки Jitsi. Рядом с этим файлом:
+#   site.yml                 - your server URL, not in git, see site.yml.example - адрес вашего сервера, не в git, пример: site.yml.example
+#   vault.yml                - service passwords (ansible-vault), not in git - пароли сервисов (ansible-vault), не в git
+#   plugins/recordings.yml   - recording and recordings cleanup - запись конференций и автоочистка записей
+#   plugins/file_sharing.yml - file sharing in chat - обмен файлами в чате
 jitsi_version: stable-11248-2
 jitsi_advertise_ips: "{{ ansible_host }}"
 jitsi_tz: UTC
 
-# Jitsi слушает HTTP на этом порту; HTTPS делает обратный прокси перед ним
-# (например, Nginx Proxy Manager: https://meet.example.com -> http://<IP сервера>:8000)
+# Jitsi listens for HTTP on this port; a reverse proxy in front adds HTTPS - Jitsi слушает HTTP на этом порту; HTTPS делает обратный прокси перед ним
+# E.g. Nginx Proxy Manager: https://meet.example.com -> http://<server IP>:8000 - Например, Nginx Proxy Manager: https://meet.example.com -> http://<IP сервера>:8000
 jitsi_http_port: 8000
 jitsi_https_port: 8443
 
-# Секреты лежат в vault.yml (ansible-vault)
+# Secrets live in vault.yml (ansible-vault) - Секреты лежат в vault.yml (ansible-vault)
 jitsi_jicofo_auth_password: "{{ vault_jitsi_jicofo_auth_password }}"
 jitsi_jvb_auth_password: "{{ vault_jitsi_jvb_auth_password }}"
 jitsi_jigasi_xmpp_password: "{{ vault_jitsi_jigasi_xmpp_password }}"

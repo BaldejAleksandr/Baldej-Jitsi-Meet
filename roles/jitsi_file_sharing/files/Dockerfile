@@ -1,5 +1,5 @@
-# Образ сервиса обмена файлами. Исходники лежат в ./app
-# (распаковываются ролью jitsi_file_sharing).
+# File sharing service image - Образ сервиса обмена файлами
+# Sources are in ./app, unpacked by the jitsi_file_sharing role - Исходники лежат в ./app, их распаковывает роль jitsi_file_sharing
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY app/package.json app/package-lock.json ./

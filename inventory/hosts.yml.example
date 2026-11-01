@@ -1,9 +1,9 @@
-# Скопируйте в inventory/hosts.yml и укажите свой сервер.
+# Copy to inventory/hosts.yml and set your server - Скопируйте в inventory/hosts.yml и укажите свой сервер
 all:
   children:
     jitsi:
       hosts:
         jitsi_server:
-          ansible_host: 203.0.113.10                     # IP сервера
+          ansible_host: 203.0.113.10                     # server IP - IP сервера
           ansible_user: root
           ansible_ssh_private_key_file: ~/.ssh/id_ed25519

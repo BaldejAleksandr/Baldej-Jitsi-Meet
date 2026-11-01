@@ -1,7 +1,6 @@
 #!/bin/sh
-# Правки исходников jitsi-meet-file-sharing-service перед сборкой.
-# Если исходники изменились и заменяемый фрагмент не найден целиком,
-# сборка падает, чтобы правка не потерялась молча.
+# Patches jitsi-meet-file-sharing-service sources before the build - Правки исходников jitsi-meet-file-sharing-service перед сборкой
+# If a fragment is not found, the build fails instead of losing the patch - Если фрагмент не найден, сборка падает, чтобы правка не потерялась молча
 set -eu
 
 replace() {
@@ -17,15 +16,15 @@ replace() {
     ' "$1"
 }
 
-# Лимит размера файла задаётся переменной MAX_FILE_SIZE_BYTES (в оригинале 10 МБ в коде)
+# File size limit from MAX_FILE_SIZE_BYTES (10 MB hardcoded upstream) - Лимит размера файла из MAX_FILE_SIZE_BYTES (в оригинале 10 МБ в коде)
 replace src/utils/multer.ts \
     'fileSize: 10 * 1024 * 1024' \
     'fileSize: Number(process.env.MAX_FILE_SIZE_BYTES) || 10 * 1024 * 1024'
 
-# Разрешённые файлы задаются списком расширений в ALLOWED_EXTENSIONS ("pdf,xlsx,ods").
-# Тип файла определяется по расширению, а не по тому, что прислал браузер:
-# без установленного Office/LibreOffice браузер шлёт application/octet-stream.
-# Проверка на исполняемые файлы по содержимому (isExecutableBuffer) остаётся.
+# Allowed files come from ALLOWED_EXTENSIONS ("pdf,xlsx,ods") - Разрешённые файлы задаются списком в ALLOWED_EXTENSIONS ("pdf,xlsx,ods")
+# The type is derived from the extension, not from the browser - Тип файла определяется по расширению, а не по тому, что прислал браузер
+# Without Office/LibreOffice browsers send application/octet-stream - Без Office/LibreOffice браузер шлёт application/octet-stream
+# The content check for executables (isExecutableBuffer) stays - Проверка на исполняемые файлы по содержимому (isExecutableBuffer) остаётся
 replace src/utils/multer.ts \
     "import multer from 'multer';" \
     "import mime from 'mime-types';
@@ -56,9 +55,9 @@ replace src/utils/multer.ts \
         file.mimetype = mime.lookup(ext) || '"'"'application/octet-stream'"'"';
         cb(null, true);'
 
-# Общий лимит объёма каталога загрузок MAX_TOTAL_SIZE_BYTES (0 — без лимита).
-# Перед сохранением нового файла самые старые файлы удаляются, пока новый не поместится.
-# Учитываются все файлы на диске, в том числе оставшиеся после перезапуска контейнера.
+# Total size limit of the uploads dir MAX_TOTAL_SIZE_BYTES (0: no limit) - Общий лимит объёма каталога загрузок MAX_TOTAL_SIZE_BYTES (0: без лимита)
+# Before saving a file the oldest files are deleted until it fits - Перед сохранением файла самые старые удаляются, пока новый не поместится
+# All files on disk count, including those left after a restart - Учитываются все файлы на диске, в том числе оставшиеся после перезапуска
 replace src/services/fileStorage.ts \
     "const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';" \
     "const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
@@ -72,7 +71,7 @@ interface IStoredFile {
 
 replace src/services/fileStorage.ts \
     '    async saveFile(' \
-    '    // Deletes the oldest files until a new file of the given size fits under MAX_TOTAL_SIZE_BYTES.
+    '    // Deletes the oldest files until the new file fits under MAX_TOTAL_SIZE_BYTES - Удаляет самые старые файлы, пока новый не поместится в MAX_TOTAL_SIZE_BYTES
     async makeRoom(incoming: number): Promise<void> {
         if (!MAX_TOTAL_SIZE_BYTES) return;
 
@@ -92,7 +91,7 @@ replace src/services/fileStorage.ts \
                     stored.push({ filePath, mtime: stat.mtimeMs, size: stat.size });
                 }
             } catch {
-                // the file was removed meanwhile
+                // the file was removed meanwhile - файл уже удалили
             }
         }
         stored.sort((a, b) => a.mtime - b.mtime);
@@ -105,7 +104,7 @@ replace src/services/fileStorage.ts \
             try {
                 await fs.unlink(f.filePath);
             } catch {
-                // already gone
+                // already gone - уже удалён
             }
             total -= f.size;
 
@@ -127,8 +126,8 @@ replace src/services/fileStorage.ts \
         await this.ensureUploadDir();
         await this.makeRoom(file.size);'
 
-# Сервис стоит за прокси: без trust proxy все запросы приходят с IP nginx,
-# и ограничение частоты запросов срабатывает сразу на всех пользователей
+# The service is behind proxies: without trust proxy every request has the nginx IP - Сервис стоит за прокси: без trust proxy все запросы приходят с IP nginx
+# and rate limiting hits all users at once - и ограничение частоты запросов срабатывает сразу на всех пользователей
 replace src/index.ts \
     "app.disable('x-powered-by');" \
     "app.disable('x-powered-by');

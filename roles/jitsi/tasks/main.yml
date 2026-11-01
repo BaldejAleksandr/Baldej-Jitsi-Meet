@@ -24,7 +24,7 @@
     state: directory
     mode: "0755"
 
-# Контейнеры работают от uid {{ jitsi_container_uid }} с read-only корнем
+# Containers run as uid {{ jitsi_container_uid }} with a read-only root - Контейнеры работают от uid {{ jitsi_container_uid }} с read-only корнем
 - name: Create config and storage directories
   ansible.builtin.file:
     path: "{{ jitsi_config_dir }}/{{ item }}"
@@ -89,7 +89,7 @@
   retries: 30
   delay: 5
 
-# ---------- Автоочистка записей Jibri ----------
+# ---------- Jibri recordings cleanup - Автоочистка записей Jibri ----------
 
 - name: Install recordings cleanup script
   ansible.builtin.template:

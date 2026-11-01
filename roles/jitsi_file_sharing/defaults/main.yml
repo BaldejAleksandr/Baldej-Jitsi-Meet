@@ -1,14 +1,14 @@
 ---
-# Обмен файлами в чате Jitsi (вкладка «Файлы», drag-and-drop).
-# true — установить и подключить к Jitsi, false — удалить и отключить.
+# File sharing in Jitsi chat ("Files" tab, drag and drop) - Обмен файлами в чате Jitsi (вкладка «Файлы», drag-and-drop)
+# true: install and connect to Jitsi, false: remove and disconnect - true: установить и подключить к Jitsi, false: удалить и отключить
 jitsi_file_sharing_enabled: false
 
-# Максимальный размер одного файла, МБ
+# Maximum size of one file, MB - Максимальный размер одного файла, МБ
 jitsi_file_sharing_max_file_size_mb: 10
 
-# Какие файлы можно загружать: расширения без точки, в нижнем регистре.
-# Тип файла сервис определяет по расширению; исполняемые файлы (ELF, EXE, Mach-O)
-# отклоняются по содержимому независимо от списка.
+# Allowed files: extensions without the dot - Какие файлы можно загружать: расширения без точки
+# The service derives the file type from the extension - Тип файла сервис определяет по расширению
+# Executables (ELF, EXE, Mach-O) are rejected by content anyway - Исполняемые файлы (ELF, EXE, Mach-O) отклоняются по содержимому в любом случае
 jitsi_file_sharing_allowed_extensions:
   - pdf
   - txt
@@ -28,36 +28,38 @@ jitsi_file_sharing_allowed_extensions:
   - gif
   - webp
 
-# Сколько места на диске могут занимать все загруженные файлы вместе, ГБ.
-# Когда новый файл не помещается, самые старые файлы удаляются.
+# Disk space for all uploaded files together, GB - Сколько места на диске могут занимать все загруженные файлы вместе, ГБ
+# When a new file does not fit, the oldest files are deleted - Когда новый файл не помещается, самые старые файлы удаляются
 jitsi_file_sharing_max_total_size_gb: 5
 
-# Через сколько часов загруженные файлы удаляются с сервера
+# After how many hours uploaded files are deleted - Через сколько часов загруженные файлы удаляются с сервера
 jitsi_file_sharing_retention_hours: 24
 
-# Когда запускать удаление файлов старше срока — поля cron: минута и час.
-# Каждые 10 минут: minute "*/10", hour "*". Раз в сутки в 04:30: minute "30", hour "4".
+# When to delete expired files, cron fields: minute and hour - Когда запускать удаление файлов старше срока, поля cron: минута и час
+# Every 10 minutes: minute "*/10", hour "*" - Каждые 10 минут: minute "*/10", hour "*"
+# Daily at 04:30: minute "30", hour "4" - Раз в сутки в 04:30: minute "30", hour "4"
 jitsi_file_sharing_cleanup_minute: "*/10"
 jitsi_file_sharing_cleanup_hour: "*"
 
-# true — загружать могут все участники, false — только модераторы
+# true: all participants can upload, false: moderators only - true: загружать могут все участники, false: только модераторы
 jitsi_file_sharing_upload_for_all: false
 
-# Пример сервиса из https://github.com/jitsi/jitsi-meet-file-sharing-service,
-# зафиксирован на коммите (в репозитории нет релизов)
+# Example service from https://github.com/jitsi/jitsi-meet-file-sharing-service - Пример сервиса из https://github.com/jitsi/jitsi-meet-file-sharing-service
+# Pinned to a commit, the repository has no releases - Зафиксирован на коммите, в репозитории нет релизов
 jitsi_file_sharing_service_version: 0cebd0fdb61a3dcc71d36bc5dc779e82cec0f8d4
 
 jitsi_file_sharing_base_dir: /opt/jitsi-file-sharing
 jitsi_file_sharing_project_name: jitsi-file-sharing
 jitsi_file_sharing_uid: 1000
 
-# Сколько прокси стоит перед сервисом: Nginx Proxy Manager -> nginx контейнера web.
-# Нужно, чтобы ограничение частоты запросов считалось по IP пользователя, а не прокси.
+# Number of proxies in front of the service: Nginx Proxy Manager -> web container nginx - Сколько прокси стоит перед сервисом: Nginx Proxy Manager -> nginx контейнера web
+# Rate limiting then counts the user's IP, not the proxy's - Тогда ограничение частоты запросов считается по IP пользователя, а не прокси
 jitsi_file_sharing_trusted_proxy_hops: 2
 
-# XMPP-домены внутри docker-jitsi-meet (XMPP_DOMAIN и XMPP_MUC_DOMAIN, по умолчанию meet.jitsi и muc.meet.jitsi)
+# XMPP domains inside docker-jitsi-meet (XMPP_DOMAIN, XMPP_MUC_DOMAIN) - XMPP-домены внутри docker-jitsi-meet (XMPP_DOMAIN, XMPP_MUC_DOMAIN)
+# Defaults: meet.jitsi and muc.meet.jitsi - По умолчанию: meet.jitsi и muc.meet.jitsi
 jitsi_file_sharing_xmpp_domain: meet.jitsi
 jitsi_file_sharing_xmpp_muc_domain: "muc.{{ jitsi_file_sharing_xmpp_domain }}"
 
-# Docker-сеть compose-проекта jitsi: <имя проекта>_meet.jitsi
+# Docker network of the jitsi compose project: <project>_meet.jitsi - Docker-сеть compose-проекта jitsi: <имя проекта>_meet.jitsi
 jitsi_file_sharing_jitsi_network: "{{ jitsi_project_name | default('jitsi') }}_meet.jitsi"

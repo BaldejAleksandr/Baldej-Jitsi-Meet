@@ -1,7 +1,7 @@
 # {{ ansible_managed }}
-# Подключается в server{} контейнера web через include nginx-custom/*.conf
+# Included into server{} of the web container via nginx-custom/*.conf - Подключается в server{} контейнера web через nginx-custom/*.conf
 location ^~ /file-service/ {
-    # Имя резолвится при запросе: web стартует, даже если сервис ещё не поднят
+    # Resolved per request, so web starts even if the service is down - Имя резолвится при запросе: web стартует, даже если сервис не поднят
     set $file_sharing_upstream http://file-sharing.meet.jitsi:3000;
     rewrite ^/file-service(/.*)$ $1 break;
     proxy_pass $file_sharing_upstream;

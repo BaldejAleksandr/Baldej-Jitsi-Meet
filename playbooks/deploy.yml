@@ -3,5 +3,5 @@
   hosts: jitsi
   roles:
     - jitsi
-    # Обмен файлами в чате; включается jitsi_file_sharing_enabled в vars.yml
+    # File sharing in chat, see plugins/file_sharing.yml - Обмен файлами в чате, см. plugins/file_sharing.yml
     - jitsi_file_sharing
