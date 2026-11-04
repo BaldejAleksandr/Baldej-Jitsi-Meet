@@ -6,6 +6,10 @@ jitsi_file_sharing_enabled: false
 # Maximum size of one file, MB - Максимальный размер одного файла, МБ
 jitsi_file_sharing_max_file_size_mb: 10
 
+# Lifetime of the upload token, seconds - Время жизни токена для загрузки, секунды
+# The token must still be valid when the file reaches the service: large files need more time - Токен должен быть ещё действителен, когда файл дойдёт до сервиса: большим файлам нужно больше времени
+jitsi_file_sharing_token_ttl_seconds: 600
+
 # Allowed files: extensions without the dot - Какие файлы можно загружать: расширения без точки
 # The service derives the file type from the extension - Тип файла сервис определяет по расширению
 # Executables (ELF, EXE, Mach-O) are rejected by content anyway - Исполняемые файлы (ELF, EXE, Mach-O) отклоняются по содержимому в любом случае

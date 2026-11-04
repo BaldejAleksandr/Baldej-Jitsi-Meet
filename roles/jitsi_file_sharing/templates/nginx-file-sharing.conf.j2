@@ -6,7 +6,10 @@ location ^~ /file-service/ {
     rewrite ^/file-service(/.*)$ $1 break;
     proxy_pass $file_sharing_upstream;
 
-    client_max_body_size {{ jitsi_file_sharing_max_file_size_mb + 1 }}m;
+    client_max_body_size {{ (jitsi_file_sharing_max_file_size_mb | int) + 1 }}m;
+    # Stream the upload to the service instead of buffering it first - Передавать загрузку сервису сразу, а не после полной буферизации
+    # Otherwise the token is checked only after the whole file arrives and may expire - Иначе токен проверяется только после приёма всего файла и успевает истечь
+    proxy_request_buffering off;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;

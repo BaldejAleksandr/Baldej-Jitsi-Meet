@@ -9,7 +9,7 @@ short_lived_token = {
     accepted_audiences = { "file-sharing" };
     key_path = "/run/prosody/config/file-sharing/short_lived_token.key";
     key_id = "jitsi/short_lived_token";
-    ttl_seconds = 30;
+    ttl_seconds = {{ jitsi_file_sharing_token_ttl_seconds | int }};
 };
 
 -- Moderator permissions without JWT: mod_jitsi_permissions defaults + file-upload - Права модератора без JWT: значения mod_jitsi_permissions по умолчанию + file-upload
