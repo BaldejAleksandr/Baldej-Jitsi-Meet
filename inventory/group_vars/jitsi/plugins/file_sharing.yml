@@ -3,9 +3,10 @@
 jitsi_file_sharing_enabled: true          # false: remove the service and the Files tab - false: удалить сервис и вкладку «Файлы»
 jitsi_file_sharing_upload_for_all: true   # false: moderators only - false: загружать могут только модераторы
 
-jitsi_file_sharing_max_file_size_mb: 10   # max size of one file, MB - максимальный размер одного файла, МБ
+jitsi_file_sharing_max_file_size_mb: 100   # max size of one file, MB - максимальный размер одного файла, МБ
 jitsi_file_sharing_max_total_size_gb: 5   # total size on disk, GB; oldest deleted above it - общий объём на диске, ГБ; сверх него удаляются самые старые
 jitsi_file_sharing_retention_hours: 24    # hours to keep a file - через сколько часов файлы удаляются
+jitsi_file_sharing_token_ttl_seconds: 600   # upload token lifetime, s; big files need more - время жизни токена загрузки, с; большим файлам нужно больше
 
 # When to delete expired files, cron fields, server time zone - Когда удалять старые файлы, поля cron, часовой пояс сервера
 # Now: every 10 minutes - Сейчас: каждые 10 минут
@@ -32,3 +33,4 @@ jitsi_file_sharing_allowed_extensions:
   - png
   - gif
   - webp
+  - zip
