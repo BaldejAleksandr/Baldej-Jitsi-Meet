@@ -1,0 +1,114 @@
+---
+- name: Check monitoring settings
+  ansible.builtin.assert:
+    that:
+      - monitoring_grafana_url | length > 0
+      - monitoring_grafana_admin_password | length >= 12
+    fail_msg: >-
+      Нужны monitoring_grafana_url (адрес Grafana в site.yml)
+      и monitoring_grafana_admin_password не короче 12 символов (vault.yml).
+
+- name: Check reverse proxy network {{ monitoring_grafana_proxy_network }}
+  community.docker.docker_network_info:
+    name: "{{ monitoring_grafana_proxy_network }}"
+  register: monitoring_proxy_network
+  failed_when: not monitoring_proxy_network.exists
+  when: monitoring_grafana_proxy_network | length > 0
+
+- name: Create monitoring directories
+  ansible.builtin.file:
+    path: "{{ monitoring_base_dir }}/{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.owner | default('root') }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    - path: ""
+    - path: config
+    - path: grafana/provisioning/datasources
+    - path: grafana/provisioning/dashboards
+    - path: grafana/dashboards
+    # Prometheus runs as nobody (65534), Grafana as 472 - Prometheus работает от nobody (65534), Grafana от 472
+    - path: data/prometheus
+      owner: 65534
+      mode: "0750"
+    - path: data/grafana
+      owner: 472
+      mode: "0750"
+
+- name: Configure Prometheus
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ monitoring_base_dir }}/config/prometheus.yml"
+    mode: "0644"
+  notify: Restart prometheus
+
+- name: Configure json-exporter for room census
+  ansible.builtin.template:
+    src: json-exporter.yml.j2
+    dest: "{{ monitoring_base_dir }}/config/json-exporter.yml"
+    mode: "0644"
+  notify: Restart json-exporter
+
+- name: Configure Grafana datasource
+  ansible.builtin.template:
+    src: grafana-datasource.yml.j2
+    dest: "{{ monitoring_base_dir }}/grafana/provisioning/datasources/prometheus.yml"
+    mode: "0644"
+  notify: Restart grafana
+
+- name: Configure Grafana dashboard provider
+  ansible.builtin.copy:
+    src: grafana-dashboards.yml
+    dest: "{{ monitoring_base_dir }}/grafana/provisioning/dashboards/jitsi.yml"
+    mode: "0644"
+  notify: Restart grafana
+
+# Dashboards are managed here: edits made in the Grafana UI are overwritten - Дашборды управляются отсюда: правки в интерфейсе Grafana перезаписываются
+- name: Install Grafana dashboards
+  ansible.builtin.copy:
+    src: dashboards/
+    dest: "{{ monitoring_base_dir }}/grafana/dashboards/"
+    mode: "0644"
+
+- name: Render compose file
+  ansible.builtin.template:
+    src: compose.yml.j2
+    dest: "{{ monitoring_base_dir }}/compose.yml"
+    mode: "0644"
+
+- name: Start monitoring
+  community.docker.docker_compose_v2:
+    project_src: "{{ monitoring_base_dir }}"
+    project_name: "{{ monitoring_project_name }}"
+    pull: missing
+    remove_orphans: true
+    state: present
+
+- name: Apply monitoring restarts
+  ansible.builtin.meta: flush_handlers
+
+# GF_SECURITY_ADMIN_PASSWORD works only on the first start: set the password from vault every run - GF_SECURITY_ADMIN_PASSWORD действует только при первом запуске: пароль из vault задаём при каждом прогоне
+- name: Set Grafana admin password from vault
+  ansible.builtin.command:
+    cmd: >-
+      docker compose -p {{ monitoring_project_name }} exec -T grafana
+      grafana cli --homepath /usr/share/grafana admin reset-admin-password --password-from-stdin
+    chdir: "{{ monitoring_base_dir }}"
+    stdin: "{{ monitoring_grafana_admin_password }}"
+  register: monitoring_grafana_password
+  until: monitoring_grafana_password is succeeded
+  retries: 12
+  delay: 5
+  changed_when: false
+  no_log: true
+
+- name: Wait for Prometheus
+  ansible.builtin.command:
+    cmd: docker compose -p {{ monitoring_project_name }} exec -T prometheus wget -qO- http://localhost:9090/-/ready
+    chdir: "{{ monitoring_base_dir }}"
+  register: monitoring_prometheus_ready
+  until: monitoring_prometheus_ready is succeeded
+  retries: 12
+  delay: 5
+  changed_when: false

@@ -1,0 +1,10 @@
+---
+# Runs after the jitsi role: scrapes JVB, Jicofo and Prosody on its network - Запускается после роли jitsi: собирает метрики JVB, Jicofo и Prosody в её сети
+# The jitsi role enables JICOFO_ENABLE_REST and muc_census when monitoring_enabled is true - Роль jitsi включает JICOFO_ENABLE_REST и muc_census при monitoring_enabled: true
+- name: Install monitoring
+  ansible.builtin.include_tasks: present.yml
+  when: monitoring_enabled | bool
+
+- name: Remove monitoring
+  ansible.builtin.include_tasks: absent.yml
+  when: not (monitoring_enabled | bool)

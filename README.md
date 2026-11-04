@@ -9,6 +9,7 @@ setup lacks:
 - **file sharing in chat** — a "Files" tab with drag and drop; other participants see and download the files;
   no JWT needed, upload for all participants or moderators only;
 - **automatic cleanup** of chat files and conference recordings (Jibri) by age and total size;
+- **monitoring** — Prometheus and Grafana with dashboards: rooms and participants, videobridge, server;
 - **per-feature config**: core settings in `vars.yml`, each feature in its own file under `plugins/`.
 
 ## Requirements
@@ -32,13 +33,14 @@ source .venv/bin/activate
 
 # Your server and domain
 cp inventory/hosts.yml.example inventory/hosts.yml                                  # IP, user, SSH key
-cp inventory/group_vars/jitsi/site.yml.example inventory/group_vars/jitsi/site.yml  # jitsi_public_url
+cp inventory/group_vars/jitsi/site.yml.example inventory/group_vars/jitsi/site.yml  # jitsi_public_url, monitoring_grafana_url
 
 # Service passwords: a vault key + random passwords, encrypted right away
 openssl rand -base64 32 > .vault_pass && chmod 600 .vault_pass
 for k in jicofo_auth jvb_auth jigasi_xmpp jigasi_transcriber jibri_recorder jibri_xmpp; do
   echo "vault_jitsi_${k}_password: $(openssl rand -hex 16)"
 done > inventory/group_vars/jitsi/vault.yml
+echo "vault_monitoring_grafana_admin_password: $(openssl rand -hex 16)" >> inventory/group_vars/jitsi/vault.yml
 ansible-vault encrypt inventory/group_vars/jitsi/vault.yml
 
 # Check and deploy
@@ -63,10 +65,12 @@ inventory/
     ├── vault.yml(.example)       service passwords, ansible-vault (vault.yml is not in git)
     └── plugins/
         ├── recordings.yml        conference recording and recordings cleanup
-        └── file_sharing.yml      file sharing in chat
+        ├── file_sharing.yml      file sharing in chat
+        └── monitoring.yml        Prometheus and Grafana
 roles/
 ├── jitsi/                        docker-jitsi-meet: release, .env, compose, recordings cleanup
-└── jitsi_file_sharing/           file sharing service and its integration with Jitsi
+├── jitsi_file_sharing/           file sharing service and its integration with Jitsi
+└── monitoring/                   Prometheus, node-exporter, json-exporter, Grafana and dashboards
 docs/                             operations notes (in Russian)
 ```
 
@@ -81,8 +85,9 @@ On the server:
 | `/opt/jitsi-meet-cfg` | Jitsi container configs and data |
 | `/opt/jitsi-meet-cfg/storage/jibri/recordings` | conference recordings |
 | `/opt/jitsi-file-sharing` | file sharing service: sources, keys, `uploads/` |
+| `/opt/monitoring` | monitoring: configs, `data/prometheus`, `data/grafana` |
 
-Compose projects: `jitsi` and `jitsi-file-sharing`.
+Compose projects: `jitsi`, `jitsi-file-sharing` and `monitoring`.
 
 ## Configuration
 
@@ -156,6 +161,42 @@ the download link is signed and valid for 1 hour. There is no antivirus scanning
 Limitations: the room's file list is kept in the service's memory and is lost when it restarts
 (files on disk are removed by cleanup); any participant allowed to upload can delete a file.
 
+### Monitoring — `plugins/monitoring.yml`
+
+```yaml
+monitoring_enabled: true                  # false — the role removes the stack with metrics and Grafana data
+monitoring_grafana_proxy_network: nginx_proxy_default
+monitoring_prometheus_retention_time: 30d # how long to keep metrics
+monitoring_prometheus_retention_size: 2GB # disk limit
+monitoring_scrape_interval: 15s
+```
+
+In `site.yml`: `monitoring_grafana_url: https://grafana.example.com`; in `vault.yml`:
+`vault_monitoring_grafana_admin_password` (user `admin`; the password from vault is applied on every run).
+
+Exposing Grafana: a DNS record for the subdomain, then in Nginx Proxy Manager a Proxy Host
+`grafana.example.com` → `http` `grafana` `3000`, a Let's Encrypt certificate, Websockets Support on.
+Grafana joins the NPM docker network (`monitoring_grafana_proxy_network`) and publishes no ports;
+with an empty value it listens on `127.0.0.1:3001`.
+
+Dashboards (Jitsi folder):
+
+- **Jitsi — комнаты** (rooms) — rooms right now (participants, duration), participants per room over time,
+  peak for the period;
+- **Jitsi — видеомост и сервисы** (videobridge) — JVB conferences, participants, traffic, packet loss, stress and
+  connection errors, Jicofo;
+- **Сервер** (server) — CPU, memory, disks, network, load average.
+
+How it works:
+
+- rooms: the Prosody module `muc_census` serves the room list at `http://prosody:5280/room-census` (inside the
+  docker network only), `json-exporter` turns it into `jitsi_room_participants{room}` and `jitsi_room_created_time{room}`;
+- JVB serves metrics at `jvb:8080/metrics`, Jicofo at `jicofo:8888/metrics` (the jitsi role enables `JICOFO_ENABLE_REST`);
+- `node-exporter` runs in the host network to see the real network interfaces and listens only on the
+  monitoring network gateway (`monitoring_gateway`), so port 9100 is not reachable from outside;
+- dashboards live in `roles/monitoring/files/dashboards/`; changes made in the Grafana UI are not saved —
+  edit the JSON in the repository (or edit in Grafana, then Export → JSON and replace the file).
+
 ## Handy commands
 
 - `ansible-playbook playbooks/deploy.yml --check --diff` — preview changes without applying them;
@@ -170,6 +211,9 @@ None of them are copied into this repository — everything is downloaded during
 - [docker-jitsi-meet](https://github.com/jitsi/docker-jitsi-meet) and the Jitsi images — Apache-2.0;
 - [jitsi-meet-file-sharing-service](https://github.com/jitsi/jitsi-meet-file-sharing-service) — Apache-2.0,
   built with the changes from `patch.sh`;
+- [Prometheus](https://prometheus.io/), [node-exporter](https://github.com/prometheus/node_exporter),
+  [json-exporter](https://github.com/prometheus-community/json_exporter) — Apache-2.0;
+  [Grafana](https://grafana.com/) — AGPL-3.0; the official images are used;
 - Ansible collections `community.docker` and `ansible.posix` — GPL-3.0.
 
 ## License

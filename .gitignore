@@ -12,6 +12,7 @@ credentials.md
 # Local backups and one-off playbooks for a specific install - Локальные бэкапы и разовые плейбуки под конкретную установку
 backups/
 playbooks/remove_old.yml
+playbooks/remove_old_monitoring.yml
 
 # Ansible and editor leftovers - Мусор Ansible и редакторов
 *.retry

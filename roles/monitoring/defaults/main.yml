@@ -1,0 +1,36 @@
+---
+# Monitoring: Prometheus, node-exporter, json-exporter (rooms), Grafana - Мониторинг: Prometheus, node-exporter, json-exporter (комнаты), Grafana
+# true: install, false: remove the stack with its data - true: установить, false: удалить стек вместе с данными
+monitoring_enabled: false
+
+# Grafana URL behind the reverse proxy, e.g. https://grafana.example.com - Адрес Grafana за обратным прокси, например https://grafana.example.com
+monitoring_grafana_url: ""
+monitoring_grafana_admin_user: admin
+monitoring_grafana_admin_password: ""
+
+# Docker network of the reverse proxy (Nginx Proxy Manager); Grafana joins it as "grafana:3000" - Docker-сеть обратного прокси (Nginx Proxy Manager); Grafana подключается к ней как "grafana:3000"
+# Empty: publish Grafana on 127.0.0.1:{{ monitoring_grafana_local_port }} instead - Пусто: вместо этого Grafana слушает 127.0.0.1:{{ monitoring_grafana_local_port }}
+monitoring_grafana_proxy_network: nginx_proxy_default
+monitoring_grafana_local_port: 3001
+
+# How long Prometheus keeps metrics: whichever limit comes first - Сколько Prometheus хранит метрики: что наступит раньше
+monitoring_prometheus_retention_time: 30d
+monitoring_prometheus_retention_size: 2GB
+monitoring_scrape_interval: 15s
+
+# Monitoring network; node-exporter runs in the host network and listens only on its gateway - Сеть мониторинга; node-exporter работает в сети хоста и слушает только её шлюз
+# so host metrics are real but port 9100 is not reachable from outside - поэтому метрики хоста настоящие, а порт 9100 снаружи недоступен
+monitoring_subnet: 172.30.250.0/24
+monitoring_gateway: 172.30.250.1
+
+# Images, pinned - Образы, версии зафиксированы
+monitoring_prometheus_image: prom/prometheus:v3.15.1
+monitoring_node_exporter_image: prom/node-exporter:v1.12.1
+monitoring_json_exporter_image: prometheuscommunity/json-exporter:v0.8.0
+monitoring_grafana_image: grafana/grafana:13.2.5
+
+monitoring_base_dir: /opt/monitoring
+monitoring_project_name: monitoring
+
+# Jitsi services on the jitsi compose network - Сервисы Jitsi в сети compose-проекта jitsi
+monitoring_jitsi_network: "{{ jitsi_project_name | default('jitsi') }}_meet.jitsi"

@@ -1,0 +1,23 @@
+---
+# Prometheus and json-exporter reread their config only on restart - Prometheus и json-exporter перечитывают конфиг только при перезапуске
+- name: Restart prometheus
+  community.docker.docker_compose_v2:
+    project_src: "{{ monitoring_base_dir }}"
+    project_name: "{{ monitoring_project_name }}"
+    services: [prometheus]
+    state: restarted
+
+- name: Restart json-exporter
+  community.docker.docker_compose_v2:
+    project_src: "{{ monitoring_base_dir }}"
+    project_name: "{{ monitoring_project_name }}"
+    services: [json-exporter]
+    state: restarted
+
+# Dashboards are reread on the fly, datasources only on restart - Дашборды перечитываются на лету, источники данных только при перезапуске
+- name: Restart grafana
+  community.docker.docker_compose_v2:
+    project_src: "{{ monitoring_base_dir }}"
+    project_name: "{{ monitoring_project_name }}"
+    services: [grafana]
+    state: restarted

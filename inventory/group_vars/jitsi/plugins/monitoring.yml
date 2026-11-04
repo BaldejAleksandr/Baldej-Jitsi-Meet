@@ -1,0 +1,13 @@
+---
+# Monitoring, role monitoring: Prometheus, node-exporter, json-exporter, Grafana - Мониторинг, роль monitoring: Prometheus, node-exporter, json-exporter, Grafana
+# Dashboards: "Jitsi — комнаты", "Jitsi — видеомост и сервисы", "Сервер" - Дашборды: «Jitsi — комнаты», «Jitsi — видеомост и сервисы», «Сервер»
+# Grafana URL (monitoring_grafana_url) is in site.yml, admin password in vault.yml - Адрес Grafana (monitoring_grafana_url) в site.yml, пароль администратора в vault.yml
+monitoring_enabled: true                  # false: remove the stack with metrics and Grafana data - false: удалить стек вместе с метриками и данными Grafana
+
+monitoring_grafana_admin_password: "{{ vault_monitoring_grafana_admin_password }}"
+# Nginx Proxy Manager network; in NPM proxy the domain to http://grafana:3000 - Сеть Nginx Proxy Manager; в NPM проксируйте домен на http://grafana:3000
+monitoring_grafana_proxy_network: nginx_proxy_default
+
+monitoring_prometheus_retention_time: 30d # how long to keep metrics - сколько хранить метрики
+monitoring_prometheus_retention_size: 2GB # disk limit for metrics; oldest deleted above it - лимит на диске; сверх него удаляются самые старые
+monitoring_scrape_interval: 15s           # how often to collect metrics - как часто собирать метрики

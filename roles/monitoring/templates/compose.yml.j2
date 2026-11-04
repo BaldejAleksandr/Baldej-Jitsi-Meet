@@ -1,0 +1,89 @@
+# {{ ansible_managed }}
+# No ports are published to the internet: Grafana is reached via the reverse proxy network - Наружу порты не открываются: Grafana доступна через сеть обратного прокси
+services:
+  prometheus:
+    image: {{ monitoring_prometheus_image }}
+    restart: unless-stopped
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time={{ monitoring_prometheus_retention_time }}
+      - --storage.tsdb.retention.size={{ monitoring_prometheus_retention_size }}
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./data/prometheus:/prometheus
+    networks:
+      - monitoring
+      - jitsi
+
+  # Host network: real network interfaces of the server; listens only on the monitoring gateway - Сеть хоста: настоящие сетевые интерфейсы сервера; слушает только шлюз сети мониторинга
+  node-exporter:
+    image: {{ monitoring_node_exporter_image }}
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    command:
+      - --path.rootfs=/host
+      - --web.listen-address={{ monitoring_gateway }}:9100
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run|var/lib/docker/.+|var/snap/.+)($|/)
+    volumes:
+      - /:/host:ro,rslave
+
+  # Turns Prosody /room-census JSON into per-room metrics - Превращает JSON из /room-census Prosody в метрики по комнатам
+  json-exporter:
+    image: {{ monitoring_json_exporter_image }}
+    restart: unless-stopped
+    command:
+      - --config.file=/config.yml
+    volumes:
+      - ./config/json-exporter.yml:/config.yml:ro
+    networks:
+      - monitoring
+      - jitsi
+
+  grafana:
+    image: {{ monitoring_grafana_image }}
+    restart: unless-stopped
+    user: "472:472"
+    environment:
+      GF_SERVER_ROOT_URL: "{{ monitoring_grafana_url | regex_replace('/+$', '') }}/"
+      GF_SECURITY_ADMIN_USER: "{{ monitoring_grafana_admin_user }}"
+      GF_SECURITY_COOKIE_SECURE: "{{ 'true' if monitoring_grafana_url is match('https://') else 'false' }}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/jitsi-rooms.json
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+{% if monitoring_grafana_proxy_network | length == 0 %}
+    ports:
+      - "127.0.0.1:{{ monitoring_grafana_local_port }}:3000"
+{% endif %}
+    networks:
+      monitoring:
+{% if monitoring_grafana_proxy_network | length > 0 %}
+      proxy:
+        aliases:
+          - grafana
+{% endif %}
+
+networks:
+  monitoring:
+    ipam:
+      config:
+        - subnet: {{ monitoring_subnet }}
+          gateway: {{ monitoring_gateway }}
+  jitsi:
+    name: {{ monitoring_jitsi_network }}
+    external: true
+{% if monitoring_grafana_proxy_network | length > 0 %}
+  proxy:
+    name: {{ monitoring_grafana_proxy_network }}
+    external: true
+{% endif %}

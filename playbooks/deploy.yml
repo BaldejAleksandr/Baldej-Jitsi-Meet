@@ -5,3 +5,5 @@
     - jitsi
     # File sharing in chat, see plugins/file_sharing.yml - Обмен файлами в чате, см. plugins/file_sharing.yml
     - jitsi_file_sharing
+    # Prometheus + Grafana, see plugins/monitoring.yml - Prometheus + Grafana, см. plugins/monitoring.yml
+    - monitoring

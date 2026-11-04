@@ -1,0 +1,11 @@
+# Dashboards from /etc/grafana/dashboards, managed by Ansible - Дашборды из /etc/grafana/dashboards, ими управляет Ansible
+apiVersion: 1
+providers:
+  - name: jitsi
+    folder: Jitsi
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/dashboards

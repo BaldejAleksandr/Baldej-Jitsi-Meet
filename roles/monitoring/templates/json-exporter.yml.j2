@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# Prosody answers {"room_census": [{"room_name", "participants", "created_time"}]} - Prosody отвечает {"room_census": [{"room_name", "participants", "created_time"}]}
+# Result: jitsi_room_participants{room} and jitsi_room_created_time{room} (ms) - Получаются jitsi_room_participants{room} и jitsi_room_created_time{room} (мс)
+modules:
+  census:
+    metrics:
+      - name: jitsi_room
+        type: object
+        help: Jitsi room from Prosody room census
+        path: "{ .room_census[*] }"
+        labels:
+          room: "{ .room_name }"
+        values:
+          participants: "{ .participants }"
+          created_time: "{ .created_time }"

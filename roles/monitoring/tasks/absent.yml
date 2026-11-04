@@ -1,0 +1,18 @@
+---
+# Disable: stop the stack and delete its directory with metrics and Grafana data - Отключение: остановить стек и удалить каталог с метриками и данными Grafana
+- name: Check monitoring compose file
+  ansible.builtin.stat:
+    path: "{{ monitoring_base_dir }}/compose.yml"
+  register: monitoring_compose
+
+- name: Stop monitoring
+  community.docker.docker_compose_v2:
+    project_src: "{{ monitoring_base_dir }}"
+    project_name: "{{ monitoring_project_name }}"
+    state: absent
+  when: monitoring_compose.stat.exists
+
+- name: Remove monitoring directory
+  ansible.builtin.file:
+    path: "{{ monitoring_base_dir }}"
+    state: absent

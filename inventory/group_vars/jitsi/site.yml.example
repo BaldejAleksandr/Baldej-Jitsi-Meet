@@ -1,3 +1,5 @@
 ---
 # Copy to site.yml next to this file and set the URL of your Jitsi - Скопируйте в site.yml рядом и укажите адрес вашего Jitsi
 jitsi_public_url: https://meet.example.com
+# Grafana URL; in Nginx Proxy Manager proxy it to http://grafana:3000 - Адрес Grafana; в Nginx Proxy Manager проксируйте его на http://grafana:3000
+monitoring_grafana_url: https://grafana.example.com

@@ -1,0 +1,51 @@
+# {{ ansible_managed }}
+global:
+  scrape_interval: {{ monitoring_scrape_interval }}
+  evaluation_interval: {{ monitoring_scrape_interval }}
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Server: CPU, memory, disks, network - Сервер: процессор, память, диски, сеть
+  - job_name: node
+    static_configs:
+      - targets: ["{{ monitoring_gateway }}:9100"]
+        labels:
+          instance: "{{ inventory_hostname }}"
+
+  # Videobridge: conferences, participants, bitrate, packet loss - Видеомост: конференции, участники, битрейт, потери
+  - job_name: jvb
+    static_configs:
+      - targets: ["jvb:8080"]
+        labels:
+          instance: "{{ inventory_hostname }}"
+
+  # Conference focus (JICOFO_ENABLE_REST=1) - Фокус конференций (JICOFO_ENABLE_REST=1)
+  - job_name: jicofo
+    static_configs:
+      - targets: ["jicofo:8888"]
+        labels:
+          instance: "{{ inventory_hostname }}"
+
+  # Rooms from Prosody mod_muc_census via json-exporter - Комнаты из mod_muc_census Prosody через json-exporter
+  - job_name: jitsi_rooms
+    metrics_path: /probe
+    params:
+      module: [census]
+    static_configs:
+      - targets: ["http://prosody:5280/room-census"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: json-exporter:7979
+      - target_label: instance
+        replacement: "{{ inventory_hostname }}"
+    metric_relabel_configs:
+      # "room@muc.meet.jitsi" -> "room"
+      - source_labels: [room]
+        regex: "([^@]+)@.*"
+        target_label: room
+        replacement: "$1"

@@ -9,6 +9,9 @@
       - jitsi_recordings_retention_days | int > 0
       - jitsi_recordings_max_total_size_gb | float > 0
       - jitsi_recordings_dir is match(jitsi_config_dir ~ '/.+')
+      # these are set by the jitsi_file_sharing and monitoring roles - их задают роли jitsi_file_sharing и monitoring
+      - "'XMPP_MODULES' not in jitsi_extra_env"
+      - "'JICOFO_ENABLE_REST' not in jitsi_extra_env or not (monitoring_enabled | default(false) | bool)"
 
 - name: Set compose files list
   ansible.builtin.set_fact:

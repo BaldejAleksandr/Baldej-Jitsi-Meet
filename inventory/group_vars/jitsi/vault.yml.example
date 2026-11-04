@@ -6,6 +6,7 @@
 #   for k in jicofo_auth jvb_auth jigasi_xmpp jigasi_transcriber jibri_recorder jibri_xmpp; do
 #     echo "vault_jitsi_${k}_password: $(openssl rand -hex 16)"
 #   done > inventory/group_vars/jitsi/vault.yml
+#   echo "vault_monitoring_grafana_admin_password: $(openssl rand -hex 16)" >> inventory/group_vars/jitsi/vault.yml
 #   ansible-vault encrypt inventory/group_vars/jitsi/vault.yml
 #
 # Required variables - Нужные переменные:
@@ -15,3 +16,4 @@ vault_jitsi_jigasi_xmpp_password: CHANGE_ME
 vault_jitsi_jigasi_transcriber_password: CHANGE_ME
 vault_jitsi_jibri_recorder_password: CHANGE_ME
 vault_jitsi_jibri_xmpp_password: CHANGE_ME
+vault_monitoring_grafana_admin_password: CHANGE_ME_GRAFANA
